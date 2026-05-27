@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PubCap Analytics — Capacity Dashboard</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/recharts@2.8.0/umd/Recharts.min.js"></script>
+  <style>
+    :root {
+      --bg-base: #0c0e16;
+      --bg-card: #151824;
+      --bg-hover: #1e2236;
+      --bg-input: #1a1d2e;
+      --border: #252840;
+      --border-light: #2d3255;
+      --text-1: #e8eaf6;
+      --text-2: #9fa8c7;
+      --text-3: #5a6180;
+      --blue: #5b8ef5;
+      --green: #4ec990;
+      --yellow: #f5c842;
+      --red: #f56560;
+      --purple: #9c78f5;
+      --teal: #40c8c0;
+      --orange: #f5924e;
+      --pink: #f560b2;
+      --radius: 10px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 14px; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+      background: var(--bg-base);
+      color: var(--text-1);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-base); }
+    ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+
+    /* ── LANDING ── */
+    .landing {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at 50% 0%, #1a1f40 0%, var(--bg-base) 70%);
+      padding: 40px 20px;
+    }
+    .landing-content { text-align: center; max-width: 680px; width: 100%; }
+    .app-logo { font-size: 52px; margin-bottom: 12px; display: block; }
+    .app-title {
+      font-size: 2.4rem; font-weight: 800; letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #7ba8ff 0%, #c4b5fd 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+    .app-subtitle { color: var(--text-2); font-size: 1rem; margin-bottom: 40px; }
+    .upload-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    @media (max-width: 560px) { .upload-pair { grid-template-columns: 1fr; } }
+    .upload-zone {
+      border: 2px dashed var(--border-light);
+      border-radius: var(--radius);
+      padding: 28px 24px;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--bg-card);
+      text-align: center;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: var(--blue);
+      background: #1a2040;
+    }
+    .upload-zone.has-file {
+      border-color: var(--green);
+      border-style: solid;
+      background: #0f201a;
+    }
+    .upload-zone .uz-icon { font-size: 28px; margin-bottom: 8px; display: block; }
+    .upload-zone .uz-label { font-weight: 600; font-size: 0.95rem; color: var(--text-1); margin-bottom: 4px; }
+    .upload-zone .uz-hint { font-size: 0.78rem; color: var(--text-3); }
+    .upload-zone .uz-filename { font-size: 0.82rem; color: var(--green); font-weight: 500; margin-top: 4px; }
+    .loading-msg { color: var(--yellow); font-size: 0.9rem; margin-bottom: 12px; }
+    .error-msg { color: var(--red); font-size: 0.9rem; margin-bottom: 12px; background: rgba(245,101,96,0.1); border: 1px solid rgba(245,101,96,0.3); border-radius: 8px; padding: 10px 16px; }
+    .landing-hint { color: var(--text-3); font-size: 0.8rem; line-height: 1.6; }
+
+    /* ── DASHBOARD LAYOUT ── */
+    .dashboard { display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* ── HEADER ── */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px; height: 56px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+      flex-shrink: 0;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .header-logo { font-size: 22px; }
+    .header-title { font-weight: 700; font-size: 1.05rem; color: var(--text-1); }
+    .header-file { font-size: 0.75rem; background: var(--bg-hover); color: var(--text-2); padding: 2px 10px; border-radius: 20px; border: 1px solid var(--border-light); }
+    .header-file.prev { color: var(--purple); border-color: var(--purple); opacity: 0.7; }
+    .header-right { display: flex; gap: 8px; align-items: center; }
+    .btn-sm {
+      padding: 5px 14px; border-radius: 6px; border: 1px solid var(--border-light);
+      background: var(--bg-hover); color: var(--text-2); font-size: 0.8rem;
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .btn-sm:hover { border-color: var(--blue); color: var(--text-1); }
+
+    /* ── NOTIFICATION BARS ── */
+    .info-bar { padding: 8px 24px; font-size: 0.82rem; }
+    .info-bar.loading { background: rgba(91,142,245,0.1); color: var(--blue); border-bottom: 1px solid rgba(91,142,245,0.2); }
+    .info-bar.error { background: rgba(245,101,96,0.1); color: var(--red); border-bottom: 1px solid rgba(245,101,96,0.2); }
+
+    /* ── SUMMARY CARDS ── */
+    .summary-strip {
+      display: flex; gap: 12px; padding: 16px 24px 0;
+      overflow-x: auto; flex-shrink: 0;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      min-width: 140px; flex: 1;
+      border-top: 3px solid;
+      transition: transform 0.15s;
+    }
+    .stat-card:hover { transform: translateY(-2px); }
+    .stat-title { font-size: 0.72rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .stat-value { font-size: 1.5rem; font-weight: 700; line-height: 1; }
+    .stat-sub { font-size: 0.72rem; color: var(--text-3); margin-top: 4px; }
+    .stat-trend { font-size: 0.75rem; margin-top: 5px; }
+    .stat-trend.up { color: var(--red); }
+    .stat-trend.down { color: var(--green); }
+
+    /* ── FILTERS ── */
+    .filter-panel {
+      margin: 14px 24px 0;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+    }
+    .filter-header { font-size: 0.78rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+    .filter-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .filter-input, .filter-select {
+      padding: 6px 12px; border-radius: 6px;
+      border: 1px solid var(--border-light);
+      background: var(--bg-input);
+      color: var(--text-1); font-size: 0.82rem;
+      outline: none; transition: border-color 0.15s;
+    }
+    .filter-input { width: 220px; }
+    .filter-input:focus, .filter-select:focus { border-color: var(--blue); }
+    .filter-select option { background: var(--bg-card); }
+    .filter-reset {
+      padding: 6px 14px; border-radius: 6px;
+      border: 1px solid var(--border-light);
+      background: transparent; color: var(--text-3);
+      font-size: 0.78rem; cursor: pointer; transition: all 0.15s;
+    }
+    .filter-reset:hover { color: var(--red); border-color: var(--red); }
+
+    /* ── TABS ── */
+    .tabs {
+      display: flex; gap: 0; padding: 14px 24px 0;
+      border-bottom: 1px solid var(--border);
+      margin: 0;
+      overflow-x: auto;
+    }
+    .tab {
+      padding: 8px 20px; font-size: 0.85rem;
+      border: none; background: none;
+      color: var(--text-3); cursor: pointer;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .tab:hover { color: var(--text-2); }
+    .tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+    .tab:disabled { opacity: 0.35; cursor: not-allowed; }
+    .tab-hint { font-size: 0.7rem; color: var(--text-3); }
+
+    /* ── TAB CONTENT ── */
+    .tab-content { flex: 1; padding: 20px 24px 32px; overflow: auto; }
+
+    /* ── OVERVIEW GRID ── */
+    .chart-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+    .chart-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      grid-column: span 6;
+    }
+    .chart-card.span-8 { grid-column: span 8; }
+    .chart-card.span-12 { grid-column: span 12; }
+    .chart-card.span-4 { grid-column: span 4; }
+    @media (max-width: 900px) {
+      .chart-card, .chart-card.span-8, .chart-card.span-4 { grid-column: span 12; }
+    }
+    .chart-title {
+      font-size: 0.82rem; color: var(--text-2); font-weight: 600;
+      margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    .empty-chart { color: var(--text-3); text-align: center; padding: 40px; font-size: 0.85rem; }
+
+    /* ── TABLE ── */
+    .table-wrap { overflow: auto; margin-top: 4px; }
+    .table-meta { font-size: 0.78rem; color: var(--text-3); margin-bottom: 10px; }
+    table.dt {
+      width: 100%; border-collapse: collapse;
+      font-size: 0.82rem; white-space: nowrap;
+    }
+    table.dt th {
+      padding: 9px 12px; text-align: left;
+      background: var(--bg-hover); color: var(--text-2);
+      font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.4px;
+      cursor: pointer; user-select: none;
+      border-bottom: 1px solid var(--border-light);
+      position: sticky; top: 0; z-index: 2;
+    }
+    table.dt th:hover { color: var(--text-1); }
+    table.dt td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    table.dt tr:hover td { background: var(--bg-hover); }
+    .tr-danger td { background: rgba(245,101,96,0.06) !important; }
+    .tr-warning td { background: rgba(245,200,66,0.06) !important; }
+    .tr-new td { background: rgba(78,201,144,0.05) !important; }
+    .tr-dropped td { background: rgba(156,120,245,0.05) !important; opacity: 0.65; }
+    .td-mono { font-family: 'Courier New', monospace; color: var(--blue); font-size: 0.79rem; }
+    .td-num { text-align: right; font-variant-numeric: tabular-nums; }
+    .text-green { color: var(--green); }
+    .text-red { color: var(--red); }
+    .text-yellow { color: var(--yellow); }
+
+    /* ── UTIL BAR ── */
+    .util-cell { display: flex; align-items: center; gap: 8px; min-width: 120px; }
+    .util-track { flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .util-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+    .util-pct { font-size: 0.8rem; min-width: 44px; text-align: right; font-weight: 600; }
+
+    /* ── BADGES ── */
+    .badge {
+      display: inline-block; padding: 2px 8px;
+      border-radius: 20px; font-size: 0.72rem; font-weight: 500;
+      border: 1px solid; letter-spacing: 0.2px;
+    }
+    .badge-dc { color: var(--teal); border-color: rgba(64,200,192,0.3); background: rgba(64,200,192,0.08); }
+    .badge-int { color: var(--purple); border-color: rgba(156,120,245,0.3); background: rgba(156,120,245,0.08); }
+    .badge-new { color: var(--green); border-color: rgba(78,201,144,0.3); background: rgba(78,201,144,0.08); }
+    .badge-dropped { color: var(--orange); border-color: rgba(245,146,78,0.3); background: rgba(245,146,78,0.08); }
+    .badge-existing { color: var(--text-3); border-color: var(--border); background: transparent; }
+
+    /* ── PAGINATION ── */
+    .pagination { display: flex; align-items: center; gap: 6px; padding-top: 14px; justify-content: flex-end; }
+    .page-btn {
+      padding: 4px 10px; border-radius: 6px;
+      border: 1px solid var(--border-light);
+      background: var(--bg-hover); color: var(--text-2);
+      font-size: 0.8rem; cursor: pointer; transition: all 0.15s;
+    }
+    .page-btn:hover:not(:disabled) { border-color: var(--blue); color: var(--text-1); }
+    .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .page-info { font-size: 0.78rem; color: var(--text-3); padding: 0 6px; }
+
+    /* ── INSIGHTS ── */
+    .insights-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+    .insight-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      display: flex; gap: 14px; align-items: flex-start;
+    }
+    .insight-card.type-danger { border-left: 3px solid var(--red); }
+    .insight-card.type-warning { border-left: 3px solid var(--yellow); }
+    .insight-card.type-success { border-left: 3px solid var(--green); }
+    .insight-card.type-info { border-left: 3px solid var(--blue); }
+    .insight-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+    .insight-title { font-weight: 600; font-size: 0.88rem; color: var(--text-1); margin-bottom: 4px; }
+    .insight-detail { font-size: 0.78rem; color: var(--text-2); line-height: 1.5; }
+    .section-label {
+      font-size: 0.75rem; color: var(--text-3); text-transform: uppercase;
+      letter-spacing: 0.5px; margin-bottom: 12px; margin-top: 20px;
+    }
+    .section-label:first-child { margin-top: 0; }
+
+    /* ── TOP MOVERS ── */
+    .mover-list { display: flex; flex-direction: column; gap: 6px; }
+    .mover-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 12px; border-radius: 8px;
+      background: var(--bg-hover); font-size: 0.82rem;
+    }
+    .mover-name { flex: 1; color: var(--text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mover-dc { font-size: 0.72rem; color: var(--text-3); }
+    .mover-change { font-weight: 700; font-size: 0.88rem; min-width: 60px; text-align: right; }
+
+    /* ── QOQ SUMMARY TABLE ── */
+    .qoq-summary-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+    .qoq-mini-card { background: var(--bg-hover); border-radius: 8px; padding: 14px; text-align: center; }
+    .qoq-mini-val { font-size: 1.6rem; font-weight: 700; }
+    .qoq-mini-label { font-size: 0.72rem; color: var(--text-2); margin-top: 4px; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 700px) {
+      .summary-strip { padding: 12px 12px 0; gap: 8px; }
+      .filter-panel { margin: 10px 12px 0; }
+      .tabs { padding: 12px 12px 0; }
+      .tab-content { padding: 14px 12px 24px; }
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+"use strict";
+const { useState, useEffect, useMemo, useCallback, useRef } = React;
+
+/* ─────────────────────────────────────────────
+   RECHARTS — destructure from global
+───────────────────────────────────────────── */
+const RC = window.Recharts || {};
+const {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, Cell, ComposedChart, Line, ReferenceLine,
+  PieChart, Pie, Sector, LineChart
+} = RC;
+
+/* ─────────────────────────────────────────────
+   CONSTANTS
+───────────────────────────────────────────── */
+const UTIL_COLOR = {
+  '<50%':    '#4ec990',
+  '50-80%':  '#5b8ef5',
+  '80-100%': '#f5c842',
+  '>100%':   '#f56560',
+};
+
+const SCHEMA_PATTERNS = {
+  publisherId:     [' publisher id', ' publisherid', ' pub id', ' pubid', ' publisher_id'],
+  publisherName:   [' publisher name', ' publishername', ' pub name'],
+  dc:              [' data center', ' datacenter', ' dc '],
+  capacityQPS:     [' capacity qps', ' capacity(qps)', ' qps'],
+  capacityAbsolute:[' capacity absolute', ' capacity(absolute)', ' absolute capacity', ' cap abs', ' capacity_abs'],
+  csm:             [' csm ', ' customer success manager'],
+  csom:            [' csom', ' customer success operations'],
+  integrationType: [' integration type', ' integrationType', ' integration ', ' int type'],
+};
+
+/* ─────────────────────────────────────────────
+   SCHEMA DETECTION & PARSING
+───────────────────────────────────────────── */
+function normH(s) {
+  return ' ' + String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim() + ' ';
+}
+
+function detectSchema(headers) {
+  const normed = headers.map(normH);
+  const schema = {};
+
+  Object.entries(SCHEMA_PATTERNS).forEach(([field, patterns]) => {
+    for (let i = 0; i < normed.length; i++) {
+      if (patterns.some(p => normed[i].includes(p))) {
+        schema[field] = i;
+        break;
+      }
+    }
+  });
+
+  // Fallback: publisher ID is usually first column
+  if (schema.publisherId === undefined) schema.publisherId = 0;
+
+  const usedIdx = new Set(Object.values(schema));
+  schema.trafficCols = headers.reduce((acc, h, i) => {
+    if (!usedIdx.has(i) && h != null && String(h).trim() !== '') {
+      acc.push({ idx: i, name: String(h) });
+    }
+    return acc;
+  }, []);
+
+  return schema;
+}
+
+function parseExcelFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('FileReader failed'));
+    reader.onload = (e) => {
+      try {
+        const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
+        if (raw.length < 2) return reject(new Error('File appears empty'));
+
+        const headers = raw[0];
+        const schema = detectSchema(headers);
+        const rows = [];
+
+        for (let i = 1; i < raw.length; i++) {
+          const r = raw[i];
+          if (!r || r.every(v => v == null || v === '')) continue;
+
+          const pubId = String(r[schema.publisherId] || '').trim();
+          if (!pubId || pubId === 'null' || pubId === 'undefined') continue;
+
+          const capAbs = parseNum(r[schema.capacityAbsolute]);
+          const trafficArr = schema.trafficCols.map(col => {
+            const v = parseNum(r[col.idx]);
+            return v > 0 ? { date: col.name, value: v } : null;
+          }).filter(Boolean);
+
+          const totalTraffic = trafficArr.reduce((s, d) => s + d.value, 0);
+          const avgDailyTraffic = trafficArr.length > 0 ? totalTraffic / trafficArr.length : 0;
+          const peakTraffic = trafficArr.length > 0 ? Math.max(...trafficArr.map(d => d.value)) : 0;
+          const utilizationPct = capAbs > 0 ? Math.min((avgDailyTraffic / capAbs) * 100, 9999) : 0;
+
+          rows.push({
+            publisherId:     pubId,
+            publisherName:   cleanStr(r[schema.publisherName]) || pubId,
+            dc:              cleanStr(r[schema.dc]) || 'Unknown',
+            capacityQPS:     parseNum(r[schema.capacityQPS]),
+            capacityAbsolute: capAbs,
+            csm:             cleanStr(r[schema.csm]) || 'Unknown',
+            csom:            cleanStr(r[schema.csom]) || 'Unknown',
+            integrationType: cleanStr(r[schema.integrationType]) || 'Unknown',
+            trafficArr,
+            totalTraffic,
+            avgDailyTraffic,
+            peakTraffic,
+            utilizationPct,
+            utilizationCategory: utilCat(utilizationPct),
+          });
+        }
+
+        resolve({ rows, fileName: file.name, schema, headers });
+      } catch (err) {
+        reject(new Error('Parse error: ' + err.message));
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function parseNum(v) {
+  if (v == null) return 0;
+  const n = parseFloat(String(v).replace(/,/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+function cleanStr(v) { return v == null ? '' : String(v).trim(); }
+function utilCat(u) {
+  if (u < 50) return '<50%';
+  if (u < 80) return '50-80%';
+  if (u < 100) return '80-100%';
+  return '>100%';
+}
+
+/* ─────────────────────────────────────────────
+   QoQ COMPUTATION
+───────────────────────────────────────────── */
+function computeQoQ(currRows, prevRows) {
+  const prevMap = new Map(prevRows.map(r => [r.publisherId, r]));
+  const currMap = new Map(currRows.map(r => [r.publisherId, r]));
+  const result = [];
+
+  currRows.forEach(curr => {
+    const prev = prevMap.get(curr.publisherId);
+    if (prev) {
+      result.push({
+        ...curr,
+        prevCapacity:   prev.capacityAbsolute,
+        prevTraffic:    prev.avgDailyTraffic,
+        prevUtil:       prev.utilizationPct,
+        capacityChange: curr.capacityAbsolute - prev.capacityAbsolute,
+        capacityChangePct: pct(curr.capacityAbsolute, prev.capacityAbsolute),
+        trafficChange:  curr.avgDailyTraffic - prev.avgDailyTraffic,
+        trafficChangePct: pct(curr.avgDailyTraffic, prev.avgDailyTraffic),
+        utilizationChange: curr.utilizationPct - prev.utilizationPct,
+        status: 'existing',
+      });
+    } else {
+      result.push({
+        ...curr,
+        prevCapacity: 0, prevTraffic: 0, prevUtil: 0,
+        capacityChange: curr.capacityAbsolute, capacityChangePct: 100,
+        trafficChange: curr.avgDailyTraffic, trafficChangePct: 100,
+        utilizationChange: curr.utilizationPct, status: 'new',
+      });
+    }
+  });
+
+  prevRows.forEach(prev => {
+    if (!currMap.has(prev.publisherId)) {
+      result.push({
+        ...prev, capacityAbsolute: 0, avgDailyTraffic: 0, utilizationPct: 0,
+        prevCapacity: prev.capacityAbsolute, prevTraffic: prev.avgDailyTraffic, prevUtil: prev.utilizationPct,
+        capacityChange: -prev.capacityAbsolute, capacityChangePct: -100,
+        trafficChange: -prev.avgDailyTraffic, trafficChangePct: -100,
+        utilizationChange: -prev.utilizationPct, status: 'dropped',
+      });
+    }
+  });
+
+  return result;
+}
+
+function pct(curr, prev) {
+  return prev === 0 ? (curr > 0 ? 100 : 0) : ((curr - prev) / Math.abs(prev)) * 100;
+}
+
+/* ─────────────────────────────────────────────
+   FILTERS & FORMATTING
+───────────────────────────────────────────── */
+function applyFilters(rows, f) {
+  if (!rows) return [];
+  return rows.filter(r => {
+    if (f.dc && r.dc !== f.dc) return false;
+    if (f.csm && r.csm !== f.csm) return false;
+    if (f.csom && r.csom !== f.csom) return false;
+    if (f.integrationType && r.integrationType !== f.integrationType) return false;
+    if (f.utilCategory && r.utilizationCategory !== f.utilCategory) return false;
+    if (f.search) {
+      const s = f.search.toLowerCase();
+      if (!r.publisherId.toLowerCase().includes(s) && !r.publisherName.toLowerCase().includes(s)) return false;
+    }
+    return true;
+  });
+}
+
+function fmt(n, dp = 0) {
+  if (n == null || isNaN(n)) return '—';
+  const abs = Math.abs(n);
+  if (abs >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+  if (abs >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (abs >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+  return n.toFixed(dp);
+}
+function fmtPct(n) {
+  if (n == null || isNaN(n)) return '—';
+  return (n > 0 ? '+' : '') + n.toFixed(1) + '%';
+}
+
+/* ─────────────────────────────────────────────
+   UPLOAD ZONE
+───────────────────────────────────────────── */
+function UploadZone({ label, onFile, fileName, accent }) {
+  const [drag, setDrag] = useState(false);
+  const inputRef = useRef();
+  const drop = (e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files[0]; if (f) onFile(f); };
+  return (
+    <div
+      className={'upload-zone' + (drag ? ' drag-over' : '') + (fileName ? ' has-file' : '')}
+      style={fileName ? {} : { borderColor: drag ? (accent || 'var(--blue)') : undefined }}
+      onDragOver={e => { e.preventDefault(); setDrag(true); }}
+      onDragLeave={() => setDrag(false)}
+      onDrop={drop}
+      onClick={() => inputRef.current.click()}
+    >
+      <input ref={inputRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }}
+        onChange={e => { if (e.target.files[0]) onFile(e.target.files[0]); e.target.value = ''; }} />
+      {fileName ? (
+        <>
+          <span className="uz-icon">✅</span>
+          <div className="uz-label">{label}</div>
+          <div className="uz-filename">{fileName}</div>
+        </>
+      ) : (
+        <>
+          <span className="uz-icon">📂</span>
+          <div className="uz-label">{label}</div>
+          <div className="uz-hint">Drop .xlsx / .xls / .csv or click to browse</div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   STAT CARD
+───────────────────────────────────────────── */
+function StatCard({ title, value, sub, color, trend }) {
+  return (
+    <div className="stat-card" style={{ borderTopColor: color || 'var(--blue)' }}>
+      <div className="stat-title">{title}</div>
+      <div className="stat-value" style={{ color: color || 'var(--text-1)' }}>{value}</div>
+      {sub && <div className="stat-sub">{sub}</div>}
+      {trend != null && !isNaN(trend) && (
+        <div className={'stat-trend ' + (trend > 0 ? 'up' : 'down')}>
+          {trend > 0 ? '▲' : '▼'} {Math.abs(trend).toFixed(1)}% QoQ
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   FILTER PANEL
+───────────────────────────────────────────── */
+function FilterPanel({ rows, filters, onChange }) {
+  const uniq = key => [...new Set((rows || []).map(r => r[key]).filter(v => v && v !== 'Unknown'))].sort();
+  const dcs   = useMemo(() => uniq('dc'),              [rows]);
+  const csms  = useMemo(() => uniq('csm'),             [rows]);
+  const csoms = useMemo(() => uniq('csom'),            [rows]);
+  const types = useMemo(() => uniq('integrationType'), [rows]);
+
+  const set = (key, val) => onChange({ ...filters, [key]: val || undefined });
+
+  return (
+    <div className="filter-panel">
+      <div className="filter-header">🔍 Filters</div>
+      <div className="filter-row">
+        <input className="filter-input" placeholder="Search Publisher ID / Name…"
+          value={filters.search || ''} onChange={e => set('search', e.target.value)} />
+        <Select label="All Data Centers" val={filters.dc} opts={dcs} onChange={v => set('dc', v)} />
+        <Select label="All CSMs" val={filters.csm} opts={csms} onChange={v => set('csm', v)} />
+        <Select label="All CSOMs" val={filters.csom} opts={csoms} onChange={v => set('csom', v)} />
+        <Select label="All Integration Types" val={filters.integrationType} opts={types} onChange={v => set('integrationType', v)} />
+        <Select label="All Utilization" val={filters.utilCategory}
+          opts={['<50%', '50-80%', '80-100%', '>100%']} onChange={v => set('utilCategory', v)} />
+        <button className="filter-reset" onClick={() => onChange({})}>✕ Reset</button>
+      </div>
+    </div>
+  );
+}
+function Select({ label, val, opts, onChange }) {
+  return (
+    <select className="filter-select" value={val || ''} onChange={e => onChange(e.target.value)}>
+      <option value="">{label}</option>
+      {opts.map(o => <option key={o} value={o}>{o}</option>)}
+    </select>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   CHART: CAPACITY VS TRAFFIC (Top 20)
+───────────────────────────────────────────── */
+function CapacityTrafficChart({ rows }) {
+  const data = useMemo(() => (
+    [...rows].sort((a, b) => b.avgDailyTraffic - a.avgDailyTraffic).slice(0, 20).map(r => ({
+      name: r.publisherName.length > 14 ? r.publisherName.slice(0, 14) + '…' : r.publisherName,
+      Capacity: Math.round(r.capacityAbsolute),
+      Traffic: Math.round(r.avgDailyTraffic),
+    }))
+  ), [rows]);
+  if (!data.length) return <div className="empty-chart">No data available</div>;
+  const TT = ({ active, payload, label }) => active && payload && payload.length ? (
+    <div style={{ background:'var(--bg-card)', border:'1px solid var(--border-light)', borderRadius:8, padding:'10px 14px' }}>
+      <div style={{ color:'var(--text-1)', fontWeight:600, marginBottom:6 }}>{label}</div>
+      {payload.map(p => <div key={p.name} style={{ color:p.color, fontSize:'0.82rem' }}>{p.name}: <b>{fmt(p.value)}</b></div>)}
+    </div>
+  ) : null;
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <BarChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 70 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+        <XAxis dataKey="name" tick={{ fill:'var(--text-3)', fontSize:11 }} angle={-40} textAnchor="end" interval={0} />
+        <YAxis tick={{ fill:'var(--text-3)', fontSize:11 }} tickFormatter={fmt} width={55} />
+        <Tooltip content={<TT />} />
+        <Legend wrapperStyle={{ color:'var(--text-2)', fontSize:'0.8rem' }} />
+        <Bar dataKey="Capacity" fill="var(--blue)" opacity={0.7} radius={[3,3,0,0]} />
+        <Bar dataKey="Traffic" fill="var(--green)" opacity={0.9} radius={[3,3,0,0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   CHART: UTILIZATION DISTRIBUTION
+───────────────────────────────────────────── */
+function UtilizationDistChart({ rows }) {
+  const data = useMemo(() => {
+    const counts = { '<50%': 0, '50-80%': 0, '80-100%': 0, '>100%': 0 };
+    rows.forEach(r => { if (r.utilizationCategory) counts[r.utilizationCategory]++; });
+    return Object.entries(counts).map(([name, count]) => ({ name, count }));
+  }, [rows]);
+  const TT = ({ active, payload }) => active && payload && payload.length ? (
+    <div style={{ background:'var(--bg-card)', border:'1px solid var(--border-light)', borderRadius:8, padding:'8px 12px' }}>
+      <div style={{ color: UTIL_COLOR[payload[0]?.payload?.name], fontWeight:600 }}>{payload[0]?.payload?.name}</div>
+      <div style={{ color:'var(--text-1)', fontSize:'0.82rem' }}>{payload[0]?.value} publishers</div>
+    </div>
+  ) : null;
+  return (
+    <ResponsiveContainer width="100%" height={240}>
+      <BarChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+        <XAxis dataKey="name" tick={{ fill:'var(--text-2)', fontSize:12 }} />
+        <YAxis tick={{ fill:'var(--text-3)', fontSize:11 }} />
+        <Tooltip content={<TT />} />
+        <Bar dataKey="count" name="Publishers" radius={[4,4,0,0]}>
+          {data.map((d, i) => <Cell key={d.name} fill={UTIL_COLOR[d.name]} />)}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   CHART: DC LOAD
+───────────────────────────────────────────── */
+function DCLoadChart({ rows }) {
+  const data = useMemo(() => {
+    const m = {};
+    rows.forEach(r => {
+      if (!m[r.dc]) m[r.dc] = { dc: r.dc, Capacity: 0, Traffic: 0, count: 0 };
+      m[r.dc].Capacity += r.capacityAbsolute;
+      m[r.dc].Traffic  += r.avgDailyTraffic;
+      m[r.dc].count++;
+    });
+    return Object.values(m).sort((a, b) => b.Traffic - a.Traffic).slice(0, 12);
+  }, [rows]);
+  if (!data.length) return <div className="empty-chart">No DC data</div>;
+  const TT = ({ active, payload, label }) => active && payload && payload.length ? (
+    <div style={{ background:'var(--bg-card)', border:'1px solid var(--border-light)', borderRadius:8, padding:'10px 14px' }}>
+      <div style={{ color:'var(--teal)', fontWeight:600, marginBottom:6 }}>{label}</div>
+      {payload.map(p => <div key={p.name} style={{ color:p.color, fontSize:'0.82rem' }}>{p.name}: <b>{fmt(p.value)}</b></div>)}
+      <div style={{ color:'var(--text-3)', fontSize:'0.76rem', marginTop:6 }}>
+        Util: {data.find(d=>d.dc===label)?.Capacity > 0
+          ? ((data.find(d=>d.dc===label)?.Traffic / data.find(d=>d.dc===label)?.Capacity) * 100).toFixed(1) + '%'
+          : '—'}
+      </div>
+    </div>
+  ) : null;
+  return (
+    <ResponsiveContainer width="100%" height={280}>
+      <BarChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 50 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+        <XAxis dataKey="dc" tick={{ fill:'var(--text-3)', fontSize:11 }} angle={-30} textAnchor="end" interval={0} />
+        <YAxis tick={{ fill:'var(--text-3)', fontSize:11 }} tickFormatter={fmt} width={55} />
+        <Tooltip content={<TT />} />
+        <Legend wrapperStyle={{ color:'var(--text-2)', fontSize:'0.8rem' }} />
+        <Bar dataKey="Capacity" fill="var(--blue)" opacity={0.6} radius={[3,3,0,0]} />
+        <Bar dataKey="Traffic"  fill="var(--teal)" opacity={0.9} radius={[3,3,0,0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   CHART: QoQ DELTA (Top 20 movers)
+───────────────────────────────────────────── */
+function QoQMoverChart({ qoqRows }) {
+  const data = useMemo(() => (
+    [...(qoqRows || [])].filter(r => r.status === 'existing')
+      .sort((a, b) => Math.abs(b.trafficChangePct) - Math.abs(a.trafficChangePct))
+      .slice(0, 20).map(r => ({
+        name: r.publisherName.length > 14 ? r.publisherName.slice(0, 14) + '…' : r.publisherName,
+        'Traffic Δ%': +r.trafficChangePct.toFixed(1),
+        'Util Δ%':    +r.utilizationChange.toFixed(1),
+      }))
+  ), [qoqRows]);
+  if (!data.length) return <div className="empty-chart">Need 2 quarters for comparison</div>;
+  const TT = ({ active, payload, label }) => active && payload && payload.length ? (
+    <div style={{ background:'var(--bg-card)', border:'1px solid var(--border-light)', borderRadius:8, padding:'10px 14px' }}>
+      <div style={{ color:'var(--text-1)', fontWeight:600, marginBottom:6 }}>{label}</div>
+      {payload.map(p => (
+        <div key={p.name} style={{ color:p.color, fontSize:'0.82rem' }}>
+          {p.name}: <b style={{ color: p.value >= 0 ? 'var(--green)' : 'var(--red)' }}>{p.value > 0 ? '+' : ''}{p.value}%</b>
+        </div>
+      ))}
+    </div>
+  ) : null;
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <ComposedChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 70 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+        <XAxis dataKey="name" tick={{ fill:'var(--text-3)', fontSize:11 }} angle={-40} textAnchor="end" interval={0} />
+        <YAxis yAxisId="l" tick={{ fill:'var(--text-3)', fontSize:11 }} />
+        <YAxis yAxisId="r" orientation="right" tick={{ fill:'var(--text-3)', fontSize:11 }} />
+        <Tooltip content={<TT />} />
+        <Legend wrapperStyle={{ color:'var(--text-2)', fontSize:'0.8rem' }} />
+        <ReferenceLine yAxisId="l" y={0} stroke="var(--border-light)" />
+        <Bar yAxisId="l" dataKey="Traffic Δ%" radius={[3,3,0,0]}>
+          {data.map((d, i) => <Cell key={i} fill={d['Traffic Δ%'] >= 0 ? 'var(--green)' : 'var(--red)'} />)}
+        </Bar>
+        <Line yAxisId="r" type="monotone" dataKey="Util Δ%" stroke="var(--yellow)" dot={false} strokeWidth={2} />
+      </ComposedChart>
+    </ResponsiveContainer>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   SMART INSIGHTS
+───────────────────────────────────────────── */
+function SmartInsights({ rows, qoqRows }) {
+  const insights = useMemo(() => {
+    const list = [];
+    if (!rows || !rows.length) return list;
+
+    const overCap = rows.filter(r => r.utilizationCategory === '>100%').sort((a,b) => b.utilizationPct - a.utilizationPct);
+    if (overCap.length) list.push({
+      type: 'danger', icon: '🔴',
+      title: `${overCap.length} publisher${overCap.length > 1 ? 's' : ''} exceeding capacity`,
+      detail: 'Top offenders: ' + overCap.slice(0,3).map(r => `${r.publisherName} (${r.utilizationPct.toFixed(0)}%)`).join(', '),
+    });
+
+    const nearCap = rows.filter(r => r.utilizationCategory === '80-100%');
+    if (nearCap.length) list.push({
+      type: 'warning', icon: '🟡',
+      title: `${nearCap.length} publisher${nearCap.length > 1 ? 's are' : ' is'} near capacity (80–100%)`,
+      detail: nearCap.slice(0, 4).map(r => r.publisherName).join(', ') + (nearCap.length > 4 ? ` +${nearCap.length - 4} more` : ''),
+    });
+
+    const under = rows.filter(r => r.utilizationCategory === '<50%' && r.capacityAbsolute > 0);
+    if (under.length) {
+      const avg = under.reduce((s,r) => s + r.utilizationPct, 0) / under.length;
+      list.push({
+        type: 'info', icon: '🔵',
+        title: `${under.length} underutilized publishers (<50% utilization)`,
+        detail: `Average utilization: ${avg.toFixed(1)}%. These publishers may have excess capacity that could be reallocated.`,
+      });
+    }
+
+    // DC risk
+    const dcMap = {};
+    rows.forEach(r => {
+      if (!dcMap[r.dc]) dcMap[r.dc] = { total: 0, cap: 0 };
+      dcMap[r.dc].total += r.avgDailyTraffic;
+      dcMap[r.dc].cap   += r.capacityAbsolute;
+    });
+    const topDC = Object.entries(dcMap).map(([dc, d]) => ({
+      dc, util: d.cap > 0 ? (d.total / d.cap) * 100 : 0
+    })).sort((a,b) => b.util - a.util)[0];
+    if (topDC) list.push({
+      type: topDC.util > 90 ? 'danger' : 'info', icon: '🏢',
+      title: `Highest loaded DC: ${topDC.dc} at ${topDC.util.toFixed(1)}% average utilization`,
+      detail: topDC.util > 90 ? 'This DC is approaching critical capacity — immediate action recommended.' : 'Monitor closely for capacity planning.',
+    });
+
+    // CSM risk
+    const csmMap = {};
+    rows.forEach(r => {
+      if (!csmMap[r.csm]) csmMap[r.csm] = { risky: 0, total: 0 };
+      csmMap[r.csm].total++;
+      if (r.utilizationCategory === '>100%' || r.utilizationCategory === '80-100%') csmMap[r.csm].risky++;
+    });
+    const riskyCsm = Object.entries(csmMap).filter(([,d]) => d.risky > 0)
+      .sort((a,b) => b[1].risky - a[1].risky)[0];
+    if (riskyCsm) list.push({
+      type: 'warning', icon: '👤',
+      title: `CSM "${riskyCsm[0]}" manages ${riskyCsm[1].risky} high-risk account${riskyCsm[1].risky > 1 ? 's' : ''}`,
+      detail: `${riskyCsm[1].risky} of ${riskyCsm[1].total} publishers under this CSM are at 80%+ utilization.`,
+    });
+
+    // QoQ-specific
+    if (qoqRows && qoqRows.length) {
+      const newPubs = qoqRows.filter(r => r.status === 'new');
+      const droppedPubs = qoqRows.filter(r => r.status === 'dropped');
+
+      if (newPubs.length) list.push({
+        type: 'success', icon: '✨',
+        title: `${newPubs.length} new publisher${newPubs.length > 1 ? 's' : ''} onboarded this quarter`,
+        detail: newPubs.slice(0, 4).map(r => r.publisherName).join(', ') + (newPubs.length > 4 ? ` +${newPubs.length - 4} more` : ''),
+      });
+
+      if (droppedPubs.length) list.push({
+        type: 'warning', icon: '📉',
+        title: `${droppedPubs.length} publisher${droppedPubs.length > 1 ? 's' : ''} absent from current quarter`,
+        detail: droppedPubs.slice(0, 4).map(r => r.publisherName).join(', ') + (droppedPubs.length > 4 ? ` +${droppedPubs.length - 4} more` : ''),
+      });
+
+      const bigGrow = [...qoqRows].filter(r => r.status === 'existing')
+        .sort((a, b) => b.trafficChangePct - a.trafficChangePct)[0];
+      if (bigGrow && bigGrow.trafficChangePct > 10) list.push({
+        type: 'success', icon: '📈',
+        title: `Biggest traffic growth: ${bigGrow.publisherName} (+${bigGrow.trafficChangePct.toFixed(1)}% QoQ)`,
+        detail: `Traffic: ${fmt(bigGrow.prevTraffic)} → ${fmt(bigGrow.avgDailyTraffic)} avg daily. Utilization: ${bigGrow.prevUtil.toFixed(1)}% → ${bigGrow.utilizationPct.toFixed(1)}%.`,
+      });
+
+      const bigDrop = [...qoqRows].filter(r => r.status === 'existing')
+        .sort((a, b) => a.trafficChangePct - b.trafficChangePct)[0];
+      if (bigDrop && bigDrop.trafficChangePct < -10) list.push({
+        type: 'warning', icon: '📉',
+        title: `Biggest traffic drop: ${bigDrop.publisherName} (${bigDrop.trafficChangePct.toFixed(1)}% QoQ)`,
+        detail: `Traffic: ${fmt(bigDrop.prevTraffic)} → ${fmt(bigDrop.avgDailyTraffic)} avg daily. Investigate potential issue.`,
+      });
+
+      // New over-capacity alerts
+      const newlyOver = qoqRows.filter(r => r.utilizationCategory === '>100%' && r.prevUtil <= 100 && r.status === 'existing');
+      if (newlyOver.length) list.push({
+        type: 'danger', icon: '🚨',
+        title: `${newlyOver.length} publisher${newlyOver.length > 1 ? 's' : ''} newly exceeded capacity this quarter`,
+        detail: newlyOver.slice(0,3).map(r => `${r.publisherName} (${r.prevUtil.toFixed(0)}% → ${r.utilizationPct.toFixed(0)}%)`).join(', '),
+      });
+    }
+
+    return list;
+  }, [rows, qoqRows]);
+
+  if (!insights.length) return (
+    <div style={{ color:'var(--text-3)', textAlign:'center', padding:'60px', fontSize:'0.9rem' }}>
+      Upload data to see insights
+    </div>
+  );
+
+  return (
+    <div className="insights-grid">
+      {insights.map((ins, i) => (
+        <div key={i} className={`insight-card type-${ins.type}`}>
+          <span className="insight-icon">{ins.icon}</span>
+          <div>
+            <div className="insight-title">{ins.title}</div>
+            <div className="insight-detail">{ins.detail}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   DATA TABLE
+───────────────────────────────────────────── */
+const PAGE = 30;
+function DataTable({ rows, hasQoQ }) {
+  const [sortKey, setSortKey] = useState('utilizationPct');
+  const [sortDir, setSortDir] = useState(-1);
+  const [page, setPage] = useState(0);
+
+  const sorted = useMemo(() => {
+    return [...rows].sort((a, b) => {
+      const av = a[sortKey], bv = b[sortKey];
+      if (typeof av === 'number') return sortDir * (av - bv);
+      return sortDir * String(av || '').localeCompare(String(bv || ''));
+    });
+  }, [rows, sortKey, sortDir]);
+
+  const pageRows = sorted.slice(page * PAGE, (page + 1) * PAGE);
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE));
+
+  const sort = key => {
+    if (sortKey === key) setSortDir(d => -d);
+    else { setSortKey(key); setSortDir(-1); }
+    setPage(0);
+  };
+
+  const TH = ({ k, label, right }) => (
+    <th onClick={() => sort(k)} style={{ textAlign: right ? 'right' : 'left' }}>
+      {label} <span style={{ opacity: 0.5 }}>{sortKey === k ? (sortDir > 0 ? '↑' : '↓') : '⇅'}</span>
+    </th>
+  );
+
+  const rowCls = r => {
+    if (r.status === 'dropped') return 'tr-dropped';
+    if (r.utilizationCategory === '>100%') return 'tr-danger';
+    if (r.utilizationCategory === '80-100%') return 'tr-warning';
+    if (r.status === 'new') return 'tr-new';
+    return '';
+  };
+
+  return (
+    <>
+      <div className="table-meta">
+        {sorted.length} publisher{sorted.length !== 1 ? 's' : ''} · Page {page + 1} / {totalPages}
+      </div>
+      <div className="table-wrap">
+        <table className="dt">
+          <thead>
+            <tr>
+              <TH k="publisherId"       label="Publisher ID" />
+              <TH k="publisherName"     label="Name" />
+              <TH k="dc"                label="DC" />
+              <TH k="integrationType"   label="Integration" />
+              <TH k="csm"               label="CSM" />
+              <TH k="csom"              label="CSOM" />
+              <TH k="capacityAbsolute"  label="Capacity" right />
+              <TH k="avgDailyTraffic"   label="Avg Daily Traffic" right />
+              <TH k="peakTraffic"       label="Peak" right />
+              <TH k="utilizationPct"    label="Utilization" right />
+              {hasQoQ && <TH k="trafficChangePct"  label="Traffic Δ%" right />}
+              {hasQoQ && <TH k="utilizationChange" label="Util Δ%"    right />}
+              {hasQoQ && <TH k="status" label="Status" />}
+            </tr>
+          </thead>
+          <tbody>
+            {pageRows.map((r, i) => {
+              const uc = UTIL_COLOR[r.utilizationCategory] || 'var(--blue)';
+              return (
+                <tr key={r.publisherId + i} className={rowCls(r)}>
+                  <td className="td-mono">{r.publisherId}</td>
+                  <td style={{ maxWidth: 180, overflow:'hidden', textOverflow:'ellipsis' }}>{r.publisherName}</td>
+                  <td><span className="badge badge-dc">{r.dc}</span></td>
+                  <td><span className="badge badge-int">{r.integrationType}</span></td>
+                  <td style={{ color:'var(--text-2)' }}>{r.csm}</td>
+                  <td style={{ color:'var(--text-2)' }}>{r.csom}</td>
+                  <td className="td-num">{fmt(r.capacityAbsolute)}</td>
+                  <td className="td-num">{fmt(r.avgDailyTraffic)}</td>
+                  <td className="td-num">{fmt(r.peakTraffic)}</td>
+                  <td>
+                    <div className="util-cell">
+                      <div className="util-track">
+                        <div className="util-fill" style={{ width: Math.min(r.utilizationPct, 100) + '%', background: uc }} />
+                      </div>
+                      <span className="util-pct" style={{ color: uc }}>{r.utilizationPct.toFixed(1)}%</span>
+                    </div>
+                  </td>
+                  {hasQoQ && (
+                    <td className={'td-num ' + (r.trafficChangePct >= 0 ? 'text-green' : 'text-red')}>
+                      {fmtPct(r.trafficChangePct)}
+                    </td>
+                  )}
+                  {hasQoQ && (
+                    <td className={'td-num ' + (r.utilizationChange > 0 ? 'text-red' : 'text-green')}>
+                      {fmtPct(r.utilizationChange)}
+                    </td>
+                  )}
+                  {hasQoQ && (
+                    <td>
+                      <span className={'badge badge-' + r.status}>{r.status}</span>
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
+            {pageRows.length === 0 && (
+              <tr><td colSpan={hasQoQ ? 13 : 10} style={{ textAlign:'center', color:'var(--text-3)', padding:'40px' }}>
+                No publishers match current filters
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      {totalPages > 1 && (
+        <div className="pagination">
+          <button className="page-btn" disabled={page === 0} onClick={() => setPage(0)}>«</button>
+          <button className="page-btn" disabled={page === 0} onClick={() => setPage(p => p - 1)}>‹</button>
+          <span className="page-info">Page {page + 1} of {totalPages}</span>
+          <button className="page-btn" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>›</button>
+          <button className="page-btn" disabled={page >= totalPages - 1} onClick={() => setPage(totalPages - 1)}>»</button>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   TOP MOVERS PANEL
+───────────────────────────────────────────── */
+function TopMoversPanel({ qoqRows }) {
+  const { topUp, topDown, highUtil } = useMemo(() => {
+    const existing = (qoqRows || []).filter(r => r.status === 'existing');
+    const topUp    = [...existing].sort((a,b) => b.trafficChangePct - a.trafficChangePct).slice(0, 8);
+    const topDown  = [...existing].sort((a,b) => a.trafficChangePct - b.trafficChangePct).slice(0, 8);
+    const highUtil = [...(qoqRows || [])].filter(r => r.utilizationPct > 0).sort((a,b) => b.utilizationPct - a.utilizationPct).slice(0, 8);
+    return { topUp, topDown, highUtil };
+  }, [qoqRows]);
+
+  const MoverItem = ({ r, colorKey }) => {
+    const val = colorKey === 'util' ? r.utilizationPct : r.trafficChangePct;
+    const color = colorKey === 'util' ? UTIL_COLOR[r.utilizationCategory] : (val >= 0 ? 'var(--green)' : 'var(--red)');
+    const label = colorKey === 'util' ? fmt(val, 1) + '%' : fmtPct(val);
+    return (
+      <div className="mover-item">
+        <div>
+          <div className="mover-name">{r.publisherName}</div>
+          <div className="mover-dc">{r.dc} · {r.integrationType}</div>
+        </div>
+        <span className="mover-change" style={{ color }}>{label}</span>
+      </div>
+    );
+  };
+
+  return (
+    <div className="chart-grid">
+      <div className="chart-card span-4">
+        <div className="chart-title">📈 Top Traffic Gainers QoQ</div>
+        <div className="mover-list">{topUp.map((r, i) => <MoverItem key={i} r={r} colorKey="traffic" />)}</div>
+      </div>
+      <div className="chart-card span-4">
+        <div className="chart-title">📉 Top Traffic Declines QoQ</div>
+        <div className="mover-list">{topDown.map((r, i) => <MoverItem key={i} r={r} colorKey="traffic" />)}</div>
+      </div>
+      <div className="chart-card span-4">
+        <div className="chart-title">🔥 Highest Utilization</div>
+        <div className="mover-list">{highUtil.map((r, i) => <MoverItem key={i} r={r} colorKey="util" />)}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   MAIN APP
+───────────────────────────────────────────── */
+function App() {
+  const [currFile, setCurrFile]   = useState(null);
+  const [prevFile, setPrevFile]   = useState(null);
+  const [loading, setLoading]     = useState('');
+  const [error, setError]         = useState('');
+  const [filters, setFilters]     = useState({});
+  const [activeTab, setActiveTab] = useState('overview');
+
+  const qoqData = useMemo(() => {
+    if (currFile && prevFile) return computeQoQ(currFile.rows, prevFile.rows);
+    return null;
+  }, [currFile, prevFile]);
+
+  // Filtered rows for display
+  const displayRows = useMemo(() => {
+    const base = qoqData
+      ? qoqData.filter(r => r.status !== 'dropped')
+      : (currFile?.rows || []);
+    return applyFilters(base, filters);
+  }, [currFile, qoqData, filters]);
+
+  const filteredQoQ = useMemo(() => qoqData ? applyFilters(qoqData, filters) : null, [qoqData, filters]);
+
+  const summary = useMemo(() => {
+    if (!displayRows.length) return null;
+    const totalCap = displayRows.reduce((s,r) => s + r.capacityAbsolute, 0);
+    const totalTraf = displayRows.reduce((s,r) => s + r.avgDailyTraffic, 0);
+    const avgUtil = totalCap > 0 ? (totalTraf / totalCap) * 100 : 0;
+    const overCap = displayRows.filter(r => r.utilizationCategory === '>100%').length;
+    const qoqUtilDelta = qoqData
+      ? (() => {
+          const e = qoqData.filter(r => r.status === 'existing');
+          return e.length ? e.reduce((s,r) => s + r.utilizationChange, 0) / e.length : null;
+        })()
+      : null;
+    return {
+      count: displayRows.length, totalCap, totalTraf, avgUtil, overCap, qoqUtilDelta,
+      newCount: qoqData ? qoqData.filter(r => r.status === 'new').length : 0,
+      droppedCount: qoqData ? qoqData.filter(r => r.status === 'dropped').length : 0,
+    };
+  }, [displayRows, qoqData]);
+
+  const handleFile = async (file, which) => {
+    setError('');
+    setLoading(which === 'current' ? 'current quarter' : 'previous quarter');
+    try {
+      const result = await parseExcelFile(file);
+      if (which === 'current') { setCurrFile(result); setActiveTab('overview'); }
+      else setPrevFile(result);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading('');
+    }
+  };
+
+  const reset = () => {
+    setCurrFile(null); setPrevFile(null);
+    setFilters({}); setError(''); setActiveTab('overview');
+  };
+
+  // ── LANDING ──────────────────────────────────────────────────
+  if (!currFile) {
+    return (
+      <div className="landing">
+        <div className="landing-content">
+          <span className="app-logo">📊</span>
+          <h1 className="app-title">PubCap Analytics</h1>
+          <p className="app-subtitle">Publisher Capacity &amp; Traffic Analytics Dashboard</p>
+          <div className="upload-pair">
+            <UploadZone label="Current Quarter" onFile={f => handleFile(f, 'current')} fileName={null} accent="var(--blue)" />
+            <UploadZone label="Previous Quarter (Optional)" onFile={f => handleFile(f, 'previous')} fileName={prevFile?.fileName || null} accent="var(--purple)" />
+          </div>
+          {loading && <div className="loading-msg">⏳ Parsing {loading}…</div>}
+          {error   && <div className="error-msg">⚠️ {error}</div>}
+          <div className="landing-hint">
+            Supports .xlsx, .xls, .csv · Schema auto-detected from column headers<br />
+            Handles 500–5,000+ rows · All processing happens in-browser, nothing is uploaded
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const tabs = [
+    { id: 'overview',    label: '📊 Overview' },
+    { id: 'comparison',  label: '🔄 QoQ Comparison', disabled: !qoqData },
+    { id: 'movers',      label: '🏆 Top Movers',      disabled: !qoqData },
+    { id: 'table',       label: '📋 Data Table' },
+    { id: 'insights',    label: '🧠 Insights' },
+  ];
+
+  // ── DASHBOARD ─────────────────────────────────────────────────
+  return (
+    <div className="dashboard">
+
+      {/* ── Header ── */}
+      <header className="header">
+        <div className="header-left">
+          <span className="header-logo">📊</span>
+          <span className="header-title">PubCap Analytics</span>
+          <span className="header-file">{currFile.fileName}</span>
+          {prevFile && <span className="header-file prev">vs {prevFile.fileName}</span>}
+        </div>
+        <div className="header-right">
+          {!prevFile && (
+            <label className="btn-sm" style={{ cursor:'pointer' }}>
+              + Add Prev Quarter
+              <input type="file" accept=".xlsx,.xls,.csv" style={{ display:'none' }}
+                onChange={e => { if (e.target.files[0]) handleFile(e.target.files[0], 'previous'); e.target.value=''; }} />
+            </label>
+          )}
+          <button className="btn-sm" onClick={reset}>↩ New Upload</button>
+        </div>
+      </header>
+
+      {loading && <div className="info-bar loading">⏳ Parsing {loading}…</div>}
+      {error   && <div className="info-bar error">⚠️ {error}</div>}
+
+      {/* ── Summary Strip ── */}
+      {summary && (
+        <div className="summary-strip">
+          <StatCard title="Publishers" value={summary.count} color="var(--blue)" />
+          <StatCard title="Total Capacity" value={fmt(summary.totalCap)} sub="absolute" color="var(--purple)" />
+          <StatCard title="Avg Daily Traffic" value={fmt(summary.totalTraf)} color="var(--teal)" />
+          <StatCard
+            title="Avg Utilization"
+            value={summary.avgUtil.toFixed(1) + '%'}
+            trend={summary.qoqUtilDelta}
+            color={summary.avgUtil > 100 ? 'var(--red)' : summary.avgUtil > 80 ? 'var(--yellow)' : 'var(--green)'}
+          />
+          <StatCard title="Over Capacity" value={summary.overCap}
+            sub="publishers"
+            color={summary.overCap > 0 ? 'var(--red)' : 'var(--green)'} />
+          {qoqData && <StatCard title="New This Qtr"     value={summary.newCount}     color="var(--green)" />}
+          {qoqData && <StatCard title="Dropped This Qtr" value={summary.droppedCount} color="var(--orange)" />}
+        </div>
+      )}
+
+      {/* ── Filters ── */}
+      <FilterPanel rows={currFile.rows} filters={filters} onChange={setFilters} />
+
+      {/* ── Tabs ── */}
+      <div className="tabs">
+        {tabs.map(t => (
+          <button
+            key={t.id}
+            className={'tab' + (activeTab === t.id ? ' active' : '')}
+            disabled={!!t.disabled}
+            onClick={() => !t.disabled && setActiveTab(t.id)}
+          >
+            {t.label}
+            {t.disabled && <span className="tab-hint"> — upload 2 quarters</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Tab Content ── */}
+      <div className="tab-content">
+
+        {activeTab === 'overview' && (
+          <div className="chart-grid">
+            <div className="chart-card span-8">
+              <div className="chart-title">Capacity vs Avg Daily Traffic — Top 20 Publishers</div>
+              <CapacityTrafficChart rows={displayRows} />
+            </div>
+            <div className="chart-card span-4">
+              <div className="chart-title">Utilization Distribution</div>
+              <UtilizationDistChart rows={displayRows} />
+            </div>
+            <div className="chart-card span-12">
+              <div className="chart-title">Load by Data Center</div>
+              <DCLoadChart rows={displayRows} />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'comparison' && qoqData && (
+          <div className="chart-grid">
+            <div className="chart-card span-8">
+              <div className="chart-title">Traffic Change % — Top 20 Movers QoQ</div>
+              <QoQMoverChart qoqRows={filteredQoQ} />
+            </div>
+            <div className="chart-card span-4">
+              <div className="chart-title">QoQ Snapshot</div>
+              <div className="qoq-summary-cards" style={{ marginTop: 8 }}>
+                {[
+                  { label: 'New Publishers',       val: qoqData.filter(r => r.status === 'new').length,                              color: 'var(--green)' },
+                  { label: 'Dropped Publishers',   val: qoqData.filter(r => r.status === 'dropped').length,                          color: 'var(--orange)' },
+                  { label: 'Traffic ↑ (>5%)',      val: qoqData.filter(r => r.status === 'existing' && r.trafficChangePct > 5).length,  color: 'var(--blue)' },
+                  { label: 'Traffic ↓ (>5%)',      val: qoqData.filter(r => r.status === 'existing' && r.trafficChangePct < -5).length, color: 'var(--red)' },
+                  { label: 'Newly Over Capacity',  val: qoqData.filter(r => r.utilizationCategory === '>100%' && r.prevUtil <= 100 && r.status === 'existing').length, color: 'var(--red)' },
+                  { label: 'Capacity Increased',   val: qoqData.filter(r => r.capacityChangePct > 0 && r.status === 'existing').length, color: 'var(--purple)' },
+                ].map(item => (
+                  <div key={item.label} className="qoq-mini-card">
+                    <div className="qoq-mini-val" style={{ color: item.color }}>{item.val}</div>
+                    <div className="qoq-mini-label">{item.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'movers' && qoqData && (
+          <TopMoversPanel qoqRows={filteredQoQ} />
+        )}
+
+        {activeTab === 'table' && (
+          <DataTable rows={displayRows} hasQoQ={!!qoqData} />
+        )}
+
+        {activeTab === 'insights' && (
+          <SmartInsights rows={displayRows} qoqRows={filteredQoQ} />
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+/* ── Mount ── */
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>

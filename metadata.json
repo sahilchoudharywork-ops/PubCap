@@ -1,0 +1,5 @@
+{
+  "name": "PubCap Analytics",
+  "description": "Quarterly publisher traffic capacity and utilization analytics dashboard with QoQ comparison.",
+  "requestFramePermissions": []
+}
