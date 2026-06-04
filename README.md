@@ -1,20 +1,14 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
-
-# Run and deploy your AI Studio app
-
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/db8c677e-18f4-489b-84aa-425f2d8d7a48
 
 ## Run Locally
 
 **Prerequisites:**  Node.js
 
+1. Go to this link and download Node.js : https://nodejs.org/en/download
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+
+2. Download the code (zip file) and double click on zip file to extract the files
+3. Right click on the folder and open Mac terminal at folder
+4. Run the command "npm install" in termimal you've opened at folder
+5. Run the command "npm run dev" 
+
+Now upload the files asked and there you go! 
