@@ -45,7 +45,6 @@ export const Charts: React.FC<ChartsProps> = ({ data, previousData }) => {
     .map(d => ({
       name: d.publisherName.length > 14 ? d.publisherName.substring(0, 12) + '…' : d.publisherName,
       capacity: d.capacityAbsolute,
-      traffic: d.totalTraffic,
     }));
 
   // --- Chart 2: Capacity Distribution (Donut) ---
@@ -96,7 +95,7 @@ export const Charts: React.FC<ChartsProps> = ({ data, previousData }) => {
       {/* Chart 1 */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
         <h3 className="text-base font-bold text-slate-900 mb-1">Top 10 Publishers by Capacity</h3>
-        <p className="text-xs text-slate-400 mb-5">Capacity allocation vs DC traffic for highest-volume publishers</p>
+        <p className="text-xs text-slate-400 mb-5">Approved capacity allocation for the highest-volume publishers</p>
         <div className="h-[320px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={topPublishers} margin={{ top: 10, right: 10, left: 10, bottom: 60 }}>
@@ -111,12 +110,14 @@ export const Charts: React.FC<ChartsProps> = ({ data, previousData }) => {
               />
               <YAxis tickFormatter={formatNumber} tick={{ fontSize: 11, fill: '#64748b' }} stroke="#e2e8f0" />
               <Tooltip
-                formatter={(val: number, name: string) => [formatNumber(val), name === 'capacity' ? 'Capacity' : 'DC Allocation']}
+                formatter={(val: number) => [formatNumber(val), 'Approved Capacity']}
                 contentStyle={tooltipStyle}
               />
-              <Legend verticalAlign="top" height={32} wrapperStyle={{ fontSize: '12px' }} />
-              <Bar dataKey="capacity" name="Capacity" fill="#e2e8f0" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="traffic" name="DC Allocation" fill="#6366f1" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="capacity" name="Approved Capacity" fill="#6366f1" radius={[4, 4, 0, 0]}>
+                {topPublishers.map((_, i) => (
+                  <Cell key={`cap-${i}`} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -162,7 +163,7 @@ export const Charts: React.FC<ChartsProps> = ({ data, previousData }) => {
               <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748b' }} stroke="#e2e8f0" />
               <YAxis tickFormatter={formatNumber} tick={{ fontSize: 11, fill: '#64748b' }} stroke="#e2e8f0" />
               <Tooltip
-                formatter={(val: number, name: string) => [formatNumber(val), name === 'current' ? 'Current Quarter' : 'Previous Quarter']}
+                formatter={(val: number, name: string) => [formatNumber(val), name]}
                 contentStyle={tooltipStyle}
               />
               <Legend verticalAlign="top" height={32} wrapperStyle={{ fontSize: '12px' }} />

@@ -40,6 +40,37 @@ export interface DashboardState {
   previousData: PublisherData[];
   filteredData: PublisherData[];
   metrics: QoQMetrics | null;
+  supplyTrendData: SupplyTrendEntry[];
   loading: boolean;
   error: string | null;
+}
+
+// ─── Supply Trend ─────────────────────────────────────────────────────────────
+
+export interface SupplyTrendEntry {
+  publisherId: string;
+  dailyRequests: Record<string, number>; // dateKey → total requests
+  dailyGeCPM: Record<string, number>;    // dateKey → geCPM value
+  avgRequests: number;  // avg of last 7 available days
+  avgGeCPM: number;     // avg of last 7 available days
+  dates: string[];      // sorted date keys present in dailyRequests
+}
+
+export type CapacityStatus = 'over' | 'inline' | 'under' | 'no-data';
+
+export interface PublisherSupplyAnalysis {
+  publisherId: string;
+  publisherName: string;
+  dataCenter: string;
+  csm: string;
+  csom: string;
+  integrationType: string;
+  capacityAbsolute: number;
+  avgDailySupply: number;
+  avgGeCPM: number;
+  supplyPct: number; // (avgDailySupply / capacityAbsolute) * 100
+  status: CapacityStatus;
+  dailyRequests: Record<string, number>;
+  dailyGeCPM: Record<string, number>;
+  dates: string[];
 }
