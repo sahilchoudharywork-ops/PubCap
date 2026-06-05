@@ -147,9 +147,9 @@ export default function App() {
   const hasSupplyData    = state.supplyTrendData.length > 0;
 
   const supplyAnalysis: PublisherSupplyAnalysis[] = React.useMemo(() => {
-    if (!hasSupplyData || state.currentData.length === 0) return [];
-    return buildSupplyAnalysis(state.currentData, state.supplyTrendData);
-  }, [state.currentData, state.supplyTrendData, hasSupplyData]);
+    if (!hasSupplyData || state.filteredData.length === 0) return [];
+    return buildSupplyAnalysis(state.filteredData, state.supplyTrendData);
+  }, [state.filteredData, state.supplyTrendData, hasSupplyData]);
 
   const handleStartAnalysis = () => { if (canStartAnalysis) setIsAnalysisStarted(true); };
 
