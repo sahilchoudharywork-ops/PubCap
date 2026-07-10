@@ -160,6 +160,7 @@ export const Filters: React.FC<FiltersProps> = ({ data, onFilterChange }) => {
   const [selectedCSOMs,         setSelectedCSOMs]         = React.useState<string[]>([]);
   const [selectedIntegrations,  setSelectedIntegrations]  = React.useState<string[]>([]);
   const [selectedRegions,       setSelectedRegions]       = React.useState<string[]>([]);
+  const [selectedPods,          setSelectedPods]          = React.useState<string[]>([]);
   const [pubIdQuery,            setPubIdQuery]            = React.useState('');
 
   const dcList      = ['EAST', 'WEST', 'EMEA', 'APAC', 'JPAC'];
@@ -167,6 +168,7 @@ export const Filters: React.FC<FiltersProps> = ({ data, onFilterChange }) => {
   const csoms       = React.useMemo(() => [...new Set(data.map(d => d.csom).filter(Boolean))].sort(),             [data]);
   const integrations= React.useMemo(() => [...new Set(data.map(d => d.integrationType).filter(Boolean))].sort(),  [data]);
   const regions     = React.useMemo(() => [...new Set(data.map(d => d.dataCenter).filter(Boolean))].sort(),       [data]);
+  const pods        = React.useMemo(() => [...new Set(data.map(d => d.pod).filter(Boolean))].sort(),              [data]);
 
   // ── Filter logic ────────────────────────────────────────────────────────────
   React.useEffect(() => {
@@ -181,13 +183,15 @@ export const Filters: React.FC<FiltersProps> = ({ data, onFilterChange }) => {
       filtered = filtered.filter(d => selectedCSOMs.includes(d.csom));
     if (selectedIntegrations.length > 0)
       filtered = filtered.filter(d => selectedIntegrations.includes(d.integrationType));
+    if (selectedPods.length > 0)
+      filtered = filtered.filter(d => selectedPods.includes(d.pod));
     if (pubIdQuery.trim())
       filtered = filtered.filter(d =>
         d.publisherId.toLowerCase().includes(pubIdQuery.toLowerCase()) ||
         d.publisherName.toLowerCase().includes(pubIdQuery.toLowerCase())
       );
     onFilterChange(filtered);
-  }, [selectedDCs, selectedRegions, selectedCSMs, selectedCSOMs, selectedIntegrations, pubIdQuery, data, onFilterChange]);
+  }, [selectedDCs, selectedRegions, selectedCSMs, selectedCSOMs, selectedIntegrations, selectedPods, pubIdQuery, data, onFilterChange]);
 
   const resetAll = () => {
     setSelectedDCs([]);
@@ -195,6 +199,7 @@ export const Filters: React.FC<FiltersProps> = ({ data, onFilterChange }) => {
     setSelectedCSMs([]);
     setSelectedCSOMs([]);
     setSelectedIntegrations([]);
+    setSelectedPods([]);
     setPubIdQuery('');
   };
 
@@ -205,6 +210,7 @@ export const Filters: React.FC<FiltersProps> = ({ data, onFilterChange }) => {
     ...selectedCSMs.map(v => ({ label: `CSM: ${v}`, onRemove: () => setSelectedCSMs(prev => prev.filter(x => x !== v)) })),
     ...selectedCSOMs.map(v => ({ label: `CSOM: ${v}`, onRemove: () => setSelectedCSOMs(prev => prev.filter(x => x !== v)) })),
     ...selectedIntegrations.map(v => ({ label: v, onRemove: () => setSelectedIntegrations(prev => prev.filter(x => x !== v)) })),
+    ...selectedPods.map(v => ({ label: `POD: ${v}`, onRemove: () => setSelectedPods(prev => prev.filter(x => x !== v)) })),
   ];
 
   const hasActiveFilters = chips.length > 0 || pubIdQuery !== '';
@@ -233,6 +239,7 @@ export const Filters: React.FC<FiltersProps> = ({ data, onFilterChange }) => {
         </div>
 
         <MultiSelect label="Region"      options={regions}      selected={selectedRegions}      onChange={setSelectedRegions}      placeholder="All Regions" />
+        <MultiSelect label="POD"         options={pods}         selected={selectedPods}          onChange={setSelectedPods}          placeholder="All PODs" />
         <MultiSelect label="Data Center" options={dcList}       selected={selectedDCs}           onChange={setSelectedDCs}           placeholder="All DCs" />
         <MultiSelect label="CSM"         options={csms}         selected={selectedCSMs}          onChange={setSelectedCSMs}          placeholder="All CSMs" />
         <MultiSelect label="CSOM"        options={csoms}        selected={selectedCSOMs}         onChange={setSelectedCSOMs}         placeholder="All CSOMs" />

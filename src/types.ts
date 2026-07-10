@@ -62,9 +62,11 @@ export interface PublisherSupplyAnalysis {
   publisherId: string;
   publisherName: string;
   dataCenter: string;
+  pod: string;
   csm: string;
   csom: string;
   integrationType: string;
+  amMember: boolean;
   capacityAbsolute: number;
   avgDailySupply: number;
   avgGeCPM: number;

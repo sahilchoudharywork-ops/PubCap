@@ -7,6 +7,7 @@ import { PublisherTable } from './components/PublisherTable';
 import { Filters } from './components/Filters';
 import { Insights } from './components/Insights';
 import { SupplyTrendPanel } from './components/SupplyTrendPanel';
+import { PublisherDetailPage } from './components/PublisherDetailPage';
 import { calculateQoQ, downloadTemplate, parseSupplyTrend, buildSupplyAnalysis } from './lib/dataProcessor';
 import { PublisherData, DashboardState, SupplyTrendEntry, PublisherSupplyAnalysis } from './types';
 import { Download, Play, RefreshCcw, Upload } from 'lucide-react';
@@ -79,6 +80,7 @@ export default function App() {
   const [supplyLoading, setSupplyLoading]         = useState(false);
   const [supplyError, setSupplyError]             = useState<string | null>(null);
   const [supplyFileName, setSupplyFileName]       = useState<string | null>(() => loadSession()?.supplyFileName ?? null);
+  const [selectedPublisherId, setSelectedPublisherId] = useState<string | null>(null);
 
   // ── Persist to sessionStorage whenever meaningful state changes ───────────
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -164,6 +166,16 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+
+      {/* ── Publisher Detail Overlay ────────────────────────────────────────── */}
+      {selectedPublisherId && (
+        <PublisherDetailPage
+          publisherId={selectedPublisherId}
+          currentData={state.currentData}
+          previousData={state.previousData}
+          onClose={() => setSelectedPublisherId(null)}
+        />
+      )}
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
@@ -351,7 +363,7 @@ export default function App() {
                 <SummaryCards data={state.filteredData} metrics={state.metrics} />
                 <Insights data={state.filteredData} previousData={state.previousData} metrics={state.metrics} />
                 <Charts data={state.filteredData} previousData={state.previousData} />
-                <PublisherTable data={state.filteredData} previousData={state.previousData} />
+                <PublisherTable data={state.filteredData} previousData={state.previousData} onPublisherClick={setSelectedPublisherId} />
               </div>
             )}
 
@@ -359,7 +371,7 @@ export default function App() {
             {activeTab === 'supply' && (
               <div>
                 {hasSupplyData ? (
-                  <SupplyTrendPanel analysis={supplyAnalysis} />
+                  <SupplyTrendPanel analysis={supplyAnalysis} onPublisherClick={setSelectedPublisherId} />
                 ) : (
                   <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-16 text-center">
                     <div className="w-14 h-14 bg-violet-50 rounded-2xl flex items-center justify-center mx-auto mb-4">

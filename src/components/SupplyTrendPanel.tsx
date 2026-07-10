@@ -9,6 +9,7 @@ import { formatNumber, formatCurrency } from '../lib/dataProcessor';
 
 interface SupplyTrendPanelProps {
   analysis: PublisherSupplyAnalysis[];
+  onPublisherClick: (id: string) => void;
 }
 
 const STATUS_CONFIG: Record<CapacityStatus, { label: string; badge: string; row: string; dot: string }> = {
@@ -25,7 +26,7 @@ const tooltipStyle = {
 
 type SortKey = keyof PublisherSupplyAnalysis;
 
-export const SupplyTrendPanel: React.FC<SupplyTrendPanelProps> = ({ analysis }) => {
+export const SupplyTrendPanel: React.FC<SupplyTrendPanelProps> = ({ analysis, onPublisherClick }) => {
   const [search, setSearch]     = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<CapacityStatus | 'all'>('all');
   const [sort, setSort]         = React.useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'capacityAbsolute', dir: 'desc' });
@@ -228,7 +229,7 @@ export const SupplyTrendPanel: React.FC<SupplyTrendPanelProps> = ({ analysis }) 
 
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <thead>
+            <thead className="sticky top-0 z-10">
               <tr className="bg-slate-50/60 border-b border-slate-200">
                 <th className={thC} onClick={() => handleSort('publisherId')}>
                   <div className="flex items-center gap-1.5">PUB ID <SortIcon k="publisherId" /></div>
@@ -237,6 +238,7 @@ export const SupplyTrendPanel: React.FC<SupplyTrendPanelProps> = ({ analysis }) 
                   <div className="flex items-center gap-1.5">PUBLISHER <SortIcon k="publisherName" /></div>
                 </th>
                 <th className={thS}>REGION</th>
+                <th className={thS}>POD</th>
                 <th className={thS}>CSM</th>
                 <th className={thC} onClick={() => handleSort('capacityAbsolute')}>
                   <div className="flex items-center gap-1.5">DAILY CAPACITY <SortIcon k="capacityAbsolute" /></div>
@@ -267,12 +269,22 @@ export const SupplyTrendPanel: React.FC<SupplyTrendPanelProps> = ({ analysis }) 
                     </td>
                     {/* Publisher: capped width + truncate */}
                     <td className="px-2 py-2.5 w-36 max-w-[9rem]">
-                      <p className="text-xs font-semibold text-slate-900 truncate" title={row.publisherName}>
+                      <button
+                        onClick={() => onPublisherClick(row.publisherId)}
+                        className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline truncate block w-full text-left"
+                        title={row.publisherName}
+                      >
                         {row.publisherName}
-                      </p>
-                      <p className="text-[10px] text-slate-400 truncate">{row.integrationType}</p>
+                      </button>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        {row.amMember && (
+                          <span className="text-[9px] font-bold text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded-full">AM</span>
+                        )}
+                        <p className="text-[10px] text-slate-400 truncate">{row.integrationType}</p>
+                      </div>
                     </td>
                     <td className="px-2 py-2.5 text-xs text-slate-500 whitespace-nowrap">{row.dataCenter}</td>
+                    <td className="px-2 py-2.5 text-xs text-slate-500 whitespace-nowrap">{row.pod || '—'}</td>
                     <td className="px-2 py-2.5 text-xs text-slate-500 whitespace-nowrap">{row.csm}</td>
                     <td className="px-2 py-2.5 text-xs font-mono font-semibold text-slate-700 tabular-nums whitespace-nowrap">
                       {formatNumber(row.capacityAbsolute)}

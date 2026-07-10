@@ -6,11 +6,12 @@ import { formatNumber } from '../lib/dataProcessor';
 interface PublisherTableProps {
   data: PublisherData[];
   previousData: PublisherData[];
+  onPublisherClick: (id: string) => void;
 }
 
 type SortKey = keyof PublisherData | 'change' | 'changeAbs';
 
-export const PublisherTable: React.FC<PublisherTableProps> = ({ data, previousData }) => {
+export const PublisherTable: React.FC<PublisherTableProps> = ({ data, previousData, onPublisherClick }) => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [sortConfig, setSortConfig] = React.useState<{ key: SortKey; direction: 'asc' | 'desc' } | null>(null);
 
@@ -164,9 +165,13 @@ export const PublisherTable: React.FC<PublisherTableProps> = ({ data, previousDa
                 </td>
                 {/* Publisher: capped width + truncate to prevent column from blowing out */}
                 <td className="px-2 py-2.5 w-36 max-w-[9rem]">
-                  <p className="text-xs font-semibold text-slate-900 truncate" title={pub.publisherName}>
+                  <button
+                    onClick={() => onPublisherClick(pub.publisherId)}
+                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline truncate block w-full text-left"
+                    title={pub.publisherName}
+                  >
                     {pub.publisherName}
-                  </p>
+                  </button>
                   {pub.amMember && (
                     <span className="text-[9px] font-bold text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded-full">AM</span>
                   )}

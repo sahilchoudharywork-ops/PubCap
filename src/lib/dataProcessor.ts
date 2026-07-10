@@ -27,7 +27,11 @@ export const parseExcel = async (file: File): Promise<PublisherData[]> => {
       try {
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
-        const firstSheetName = workbook.SheetNames[0];
+        // Prefer a sheet whose name contains "allocation" or "capacity" (new multi-sheet format);
+        // fall back to the first sheet for single-sheet files.
+        const firstSheetName =
+          workbook.SheetNames.find(n => /allocation|capacity/i.test(n)) ??
+          workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
 
@@ -61,7 +65,7 @@ export const parseExcel = async (file: File): Promise<PublisherData[]> => {
         const findIndex = (names: string[]) =>
           headers.findIndex((h: string) => h && names.some(n => h.toLowerCase() === n.toLowerCase() || h.toLowerCase().includes(n.toLowerCase())));
 
-        const pubIdIdx    = findIndex(['Ω', 'publisher id', 'pub id', 'id']);
+        const pubIdIdx    = findIndex(['Ω', 'publisher id', 'pub id', 'pubid', 'id']);
         const pubNameIdx  = findIndex(['publisher', 'publisher name', 'name']);
         const regionIdx   = findIndex(['region']);
         const podIdx      = findIndex(['pod']);
@@ -461,9 +465,11 @@ export const buildSupplyAnalysis = (
       publisherId:      pub.publisherId,
       publisherName:    pub.publisherName,
       dataCenter:       pub.dataCenter,
+      pod:              pub.pod,
       csm:              pub.csm,
       csom:             pub.csom,
       integrationType:  pub.integrationType,
+      amMember:         pub.amMember,
       capacityAbsolute: pub.capacityAbsolute,
       avgDailySupply,
       avgGeCPM,
